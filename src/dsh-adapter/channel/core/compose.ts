@@ -20,6 +20,8 @@
  * unavailable.
  */
 import type { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent/types'
+import type { AgentHandle } from '@deepseek-ai/dsh-agent'
 import { markChannelReadDirty } from '../../../adapter/channel/read-view.js'
 import type { AgentCapabilities } from '../../../adapter/ports/channel-capabilities.js'
 import type { AgentIdentity, AgentMessageSubmitInput, AgentMessageSubmitResult } from '../../../adapter/ports/channel-view.js'
@@ -124,8 +126,36 @@ export interface ChannelExtension {
   start?: { before?(): void; after?(): void }
 }
 
-/** The core as an extension sees it. */
-export type CoreChannel = ReturnType<typeof createCoreChannel>
+/**
+ * The core as an extension sees it.
+ *
+ * Named explicitly to avoid TS2456/TS2577 circular references between the
+ * `createCoreChannel` declaration and a `ReturnType<typeof ...>` alias.
+ */
+export interface CoreChannel {
+  readonly state: ChannelState
+  readonly owner: ChannelOwner
+  readonly binding: ChannelBinding
+  readonly rowIds: { value: number }
+  readonly host: CoreHost
+  readonly notify: ChannelState['notify']
+  readonly unavailable: (name: string) => void
+  readonly bookkeeping: ReturnType<typeof createContextBookkeeping>
+  readonly composer: ReturnType<typeof createComposerImages>
+  readonly input: ReturnType<typeof createInputDelivery>
+  readonly inputConvergence: InputConvergence
+  readonly feed: ReturnType<typeof createBindingFeed>
+  readonly sessionSwitch: ReturnType<typeof createSessionSwitch>
+  readonly local: ReturnType<typeof createCoreLocalActions>
+  readonly files: ReturnType<typeof createCoreFiles>
+  readonly reports: ReturnType<typeof createCoreReports>
+  readonly resetIdeSelection: () => void
+  readonly refreshGitBranch: () => void
+  /** Merge an extension's contributions (before `start`). */
+  extend(next: ChannelExtension): void
+  /** Install the actions, start the runtime, bind the session. */
+  start(): ChannelState
+}
 
 export function createCoreChannel(
   ctx: Context,
